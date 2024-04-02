@@ -31,15 +31,15 @@ else
 fi
 
 # Generate a random 6 character long string for the cluster name
-cluster_name_suffix=$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 6 | head -n 1)
-cluster_name="k8s-goat-cluster-$cluster_name_suffix"
+cluster_name_suffix=$(LC_ALL=C tr -dc 'a-z0-9' < /dev/urandom | fold -w 6 | head -n 1)
+cluster_name="k8s-goat-$cluster_name_suffix"
 
 # Kubernetes Goat directory
 k8s_goat_dir="kubernetes-goat"
 
 # Check if the required tools are installed
 for tool in eksctl kubectl aws helm; do
-  command -v $tool >/dev/null 2>&1 || { echo >&2 "The tool $tool is required but it's not installed. Aborting."; exit 1; }
+  command -v $tool >/dev/null 2>&1 || { echo >&2 "The tool $tool is required but it's not installed. Aborting.\e[0m"; exit 1; }
 done
 
 # Execute based on operation
@@ -53,8 +53,8 @@ if [ "$operation" == "create" ]; then
   --node-type t4g.medium \
   --nodes 2
   if [ $? -ne 0 ]; then
-    echo "Failed to create EKS cluster. Exiting..."
-    exit 1
+	echo "Failed to create EKS cluster. Exiting..."
+	exit 1
   fi
 
 # Step 2: Update kubeconfig for the cluster
@@ -91,22 +91,23 @@ fi
 elif [ "$operation" == "delete" ]; then
   # Navigate to Kubernetes Goat directory
   if [ -d "$k8s_goat_dir" ]; then
-    cd "$k8s_goat_dir" || exit
-    # Run the teardown script for Kubernetes Goat
-    echo "Running teardown for Kubernetes Goat..."
-    bash teardown-kubernetes-goat.sh
-    if [ $? -ne 0 ]; then
-      echo "Failed to teardown Kubernetes Goat. Exiting..."
-      exit 1
-    fi
-    cd - || exit
+	cd "$k8s_goat_dir" || exit
+	# Run the teardown script for Kubernetes Goat
+	echo "Running teardown for Kubernetes Goat..."
+	bash teardown-kubernetes-goat.sh
+	if [ $? -ne 0 ]; then
+	  echo "Failed to teardown Kubernetes Goat. Exiting..."
+	  exit 1
+	fi
+	cd - || exit
   else
-    echo "Kubernetes Goat directory does not exist. Skipping teardown..."
+	echo "Kubernetes Goat directory does not exist. Skipping teardown..."
   fi
 
   # Delete the EKS cluster
   echo "Deleting EKS cluster named $cluster_name..."
   eksctl delete cluster --name "$cluster_name" --region eu-central-1
+  echo "Don't forget to remove the local copy of the kubernetes-goat directory!"
 else
   # This part is technically unreachable due to the earlier checks
   echo "Unknown operation. Exiting..."
@@ -114,4 +115,3 @@ else
 fi
 
 echo "Script completed."
-echo "To delete the whole environment just run the teardown-kubernetes-goat.sh script in the kubernetes-goat directory and delete the cluster in AWS!"
